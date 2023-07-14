@@ -1,14 +1,21 @@
+from __future__ import annotations
 import random
-from typing import Annotated
-
-from fastapi import Depends, HTTPException, APIRouter
+from typing import Annotated, Optional, List
+from fastapi import Depends, HTTPException, APIRouter, Path, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from starlette import status
+from starlette.responses import HTMLResponse
 from models import Todos
 from database import db
+from .auth import get_current_user
+import datetime
+import os
+from fastapi.templating import Jinja2Templates
+import shutil
 
 router = APIRouter()
+templates = Jinja2Templates(directory="templates")
 
 
 def get_db():
@@ -19,6 +26,7 @@ def get_db():
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
+user_dependancy = Annotated[dict, Depends(get_current_user)]
 
 
 class TodoRequest(BaseModel):
@@ -28,22 +36,30 @@ class TodoRequest(BaseModel):
     complete: bool
 
 
-@router.get("/")
-async def read_all(db: db_dependency):
-    return db.query(Todos).all()
+@router.get("/", status_code=status.HTTP_200_OK)
+async def read_all(user: user_dependancy, db: db_dependency):
+    return db.query(Todos).filter(Todos.owner_id == user.get('id')).all()
 
 
-@router.get("/todo/{todo_id}")
-async def read_todo(db: db_dependency, todo_id: int):
-    todo_model = db.query(Todos).filter(Todos.id == todo_id).first()
+@router.get("/todo/{todo_id}", status_code=status.HTTP_200_OK)
+async def read_todo(user: user_dependancy, db: db_dependency, todo_id: int = Path(gt=0)):
+    if user is None:
+        raise HTTPException(status_code=401, detail='Autentication Failed')
+
+    todo_model = db.query(Todos).filter(Todos.id == todo_id) \
+        .filter(Todos.owner_id == user.get('id')).first()
     if todo_model is not None:
         return todo_model
     raise HTTPException(status_code=404, detail="Todo not found")
 
 
 @router.post("/todo", status_code=status.HTTP_201_CREATED)
-async def create_todo(db: db_dependency, todo_request: TodoRequest):
-    todo_model = Todos(**todo_request.dict())
+async def create_todo(user: user_dependancy,
+                      db: db_dependency,
+                      todo_request: TodoRequest):
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication_Failed")
+    todo_model = Todos(**todo_request.dict(), owner_id=user.get('id'))
 
     db.add(todo_model)
     db.commit()
@@ -124,3 +140,37 @@ async def create_todo_complete(db: db_dependency):
         db.commit()
 
     return f'создание 5 завершенных карточек прошло успешно'
+
+
+@router.post("/file_download")
+async def send_to_trash_finally(invoce: UploadFile = File(...)):
+    timestamp = str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M"))
+    destination_folder = os.path.join("\\\\fs-mo\\ADMINS\\Photo_warehouse\\archive_after_utilization", timestamp)
+    os.makedirs(destination_folder, exist_ok=True)
+
+    out_filename = os.path.join(destination_folder, invoce.filename)
+
+    with open(out_filename, "wb") as buffer:
+        buffer.write(await invoce.read())
+
+@router.post("/uploadfiles/")
+async def create_upload_files(material: str = "lj",
+                              material_id: int = 0,
+                              files: UploadFile = None):
+    print(files)
+    return material, material_id, files
+
+
+@router.post("/uploadfiles1/")
+async def create_upload_files1(material_id:int = 0, files: List[UploadFile] = File(None)):
+    # return {"filenames": [file.filename for file in files]}
+    # else:
+    print(files)
+    return "test ok"
+        # return {"status": False, "test": "File not attached"}
+
+
+@router.get("/uuuu")
+async def main(request: Request = None):
+    out = "fdsfds"
+    return templates.TemplateResponse("index.html", {"request": request, "data": out})
