@@ -13,6 +13,7 @@ import datetime
 import os
 from fastapi.templating import Jinja2Templates
 import shutil
+from typing import Any, Dict
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -23,6 +24,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def response(data: Any, status: bool = True):
+    if data is None:
+        data = {}
+    return {"data": data, "status": status}
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
@@ -37,8 +43,8 @@ class TodoRequest(BaseModel):
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
-async def read_all(user: user_dependancy, db: db_dependency):
-    return db.query(Todos).filter(Todos.owner_id == user.get('id')).all()
+async def read_all(db: db_dependency):
+    return db.query(Todos).all()
 
 
 @router.get("/todo/{todo_id}", status_code=status.HTTP_200_OK)
@@ -54,12 +60,12 @@ async def read_todo(user: user_dependancy, db: db_dependency, todo_id: int = Pat
 
 
 @router.post("/todo", status_code=status.HTTP_201_CREATED)
-async def create_todo(user: user_dependancy,
+async def create_todo(
                       db: db_dependency,
                       todo_request: TodoRequest):
-    if user is None:
-        raise HTTPException(status_code=401, detail="Authentication_Failed")
-    todo_model = Todos(**todo_request.dict(), owner_id=user.get('id'))
+    # if user is None:
+    #     raise HTTPException(status_code=401, detail="Authentication_Failed")
+    todo_model = Todos(**todo_request.dict(), owner_id=1)
 
     db.add(todo_model)
     db.commit()
@@ -121,8 +127,7 @@ async def create_todo_uncomplete(db: db_dependency):
 
         db.add(todo_example)
         db.commit()
-
-    return f'создание 5 незавершенных карточек прошло успешно'
+    return response(data={"message": f'создание 5 незавершенных карточек прошло успешно'})
 
 
 @router.post("/create_5_cards_complete")
@@ -140,7 +145,6 @@ async def create_todo_complete(db: db_dependency):
         db.commit()
 
     return f'создание 5 завершенных карточек прошло успешно'
-
 
 @router.post("/file_download")
 async def send_to_trash_finally(invoce: UploadFile = File(...)):
@@ -170,7 +174,7 @@ async def create_upload_files1(material_id:int = 0, files: List[UploadFile] = Fi
         # return {"status": False, "test": "File not attached"}
 
 
-@router.get("/uuuu")
+@router.get("/test_button")
 async def main(request: Request = None):
     out = "fdsfds"
-    return templates.TemplateResponse("index.html", {"request": request, "data": out})
+    return templates.TemplateResponse("test.html", {"request": request, "data": out})
