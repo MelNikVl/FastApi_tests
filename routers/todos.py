@@ -157,6 +157,7 @@ async def send_to_trash_finally(invoce: UploadFile = File(...)):
     with open(out_filename, "wb") as buffer:
         buffer.write(await invoce.read())
 
+
 @router.post("/uploadfiles/")
 async def create_upload_files(material: str = "lj",
                               material_id: int = 0,
