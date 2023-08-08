@@ -35,6 +35,7 @@ def get_memory_info():
     }
     return memory_info
 
+
 def get_disk_info():
     # Информация о диске
     disk = psutil.disk_usage('/')
