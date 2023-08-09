@@ -23,7 +23,6 @@ def get_cpu_info():
     }
     return cpu_info
 
-
 def get_memory_info():
     # Информация о памяти
     memory = psutil.virtual_memory()
@@ -34,7 +33,6 @@ def get_memory_info():
         "Memory Usage (%)": memory.percent,
     }
     return memory_info
-
 
 def get_disk_info():
     # Информация о диске
