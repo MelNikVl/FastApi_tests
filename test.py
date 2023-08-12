@@ -13,6 +13,7 @@ def get_system_info():
     }
     return system_info
 
+
 def get_cpu_info():
     # Информация о процессоре
     cpu_info = {
