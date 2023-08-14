@@ -24,6 +24,7 @@ def get_cpu_info():
     }
     return cpu_info
 
+
 def get_memory_info():
     # Информация о памяти
     memory = psutil.virtual_memory()
